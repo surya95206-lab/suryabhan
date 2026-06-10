@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MediaPipe Body Tracking</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+
+        video,
+        canvas {
+            position: absolute;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+        }
+
+        h1 {
+            position: absolute;
+            color: white;
+            z-index: 10;
+            left: 20px;
+            top: 10px;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Real-Time Body Tracking</h1>
+
+<video class="input_video" autoplay playsinline></video>
+<canvas class="output_canvas"></canvas>
+
+<script>
+const videoElement = document.querySelector('.input_video');
+const canvasElement = document.querySelector('.output_canvas');
+const canvasCtx = canvasElement.getContext('2d');
+
+function resizeCanvas() {
+    canvasElement.width = window.innerWidth;
+    canvasElement.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function onResults(results) {
+    canvasCtx.save();
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+    canvasCtx.drawImage(
+        results.image,
+        0,
+        0,
+        canvasElement.width,
+        canvasElement.height
+    );
+
+    if (results.poseLandmarks) {
+        drawConnectors(
+            canvasCtx,
+            results.poseLandmarks,
+            POSE_CONNECTIONS,
+            { color: '#00FF00', lineWidth: 4 }
+        );
+
+        drawLandmarks(
+            canvasCtx,
+            results.poseLandmarks,
+            { color: '#FF0000', lineWidth: 2, radius: 5 }
+        );
+    }
+
+    canvasCtx.restore();
+}
+
+const pose = new Pose({
+    locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+    }
+});
+
+pose.setOptions({
+    modelComplexity: 1,
+    smoothLandmarks: true,
+    enableSegmentation: false,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+});
+
+pose.onResults(onResults);
+
+const camera = new Camera(videoElement, {
+    onFrame: async () => {
+        await pose.send({ image: videoElement });
+    },
+    width: 1280,
+    height: 720
+});
+
+camera.start();
+</script>
+
+</body>
+</html>
